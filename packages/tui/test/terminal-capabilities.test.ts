@@ -159,6 +159,68 @@ console.log(JSON.stringify({ id: TERMINAL_ID, notifyProtocol: TERMINAL.notifyPro
 			await fs.rm(binDir, { force: true, recursive: true });
 		}
 	});
+
+	it.skipIf(process.platform === "win32")("recovers when the first client probe overruns its budget", async () => {
+		const binDir = await fs.mkdtemp(path.join(os.tmpdir(), "omp-tmux-client-"));
+		try {
+			const tmux = path.join(binDir, "tmux");
+			// > 500 ms on the first call only (killed by the probe's SIGKILL), fast
+			// afterwards. The probe result is cached for the life of the process, so
+			// one over-budget spawn must not pin the generic `trueColor` fallback.
+			await Bun.write(
+				tmux,
+				`#!/bin/sh
+[ "$1" = "display-message" ] && [ "$2" = "-p" ] && [ "$3" = '#{client_termtype}' ] || exit 64
+if [ ! -f "$0.once" ]; then : > "$0.once"; sleep 1; fi
+printf "%s\\n" "WezTerm 20260905-175422-0f4b5596"
+`,
+			);
+			await fs.chmod(tmux, 0o755);
+			const env = subprocessEnv({
+				PI_TEST_RUNTIME: undefined,
+				BUN_ENV: undefined,
+				NODE_ENV: undefined,
+				// Not stripped by the shared helper; a host running the suite inside
+				// another multiplexer must not redirect the client probe.
+				STY: undefined,
+				ZELLIJ: undefined,
+				CMUX_WORKSPACE_ID: undefined,
+				CMUX_SURFACE_ID: undefined,
+				CMUX_REMOTE_TRANSPORT: undefined,
+				WMUX: undefined,
+				WMUX_SURFACE_ID: undefined,
+				TERM: "tmux-256color",
+				TERM_PROGRAM: "tmux",
+				TERM_PROGRAM_VERSION: "3.6b",
+				COLORTERM: "truecolor",
+				TMUX: "/tmp/tmux-1000/default,4242,0",
+				SSH_CONNECTION: "client 1 server 22",
+				PATH: `${binDir}${path.delimiter}${Bun.env.PATH ?? ""}`,
+			});
+			const proc = Bun.spawn({
+				cmd: [
+					process.execPath,
+					"--eval",
+					`import { TERMINAL, TERMINAL_ID } from "@oh-my-pi/pi-tui/terminal-capabilities";
+console.log(JSON.stringify({ id: TERMINAL_ID, notifyProtocol: TERMINAL.notifyProtocol }));`,
+				],
+				env,
+				stdout: "pipe",
+				stderr: "pipe",
+			});
+			const [stdout, stderr, exitCode] = await Promise.all([
+				new Response(proc.stdout).text(),
+				new Response(proc.stderr).text(),
+				proc.exited,
+			]);
+
+			expect(stderr).toBe("");
+			expect(exitCode).toBe(0);
+			expect(stdout).toBe('{"id":"wezterm","notifyProtocol":"\\u001b]9;"}\n');
+		} finally {
+			await fs.rm(binDir, { force: true, recursive: true });
+		}
+	});
 });
 
 describe("synchronizedOutputUserOverride", () => {

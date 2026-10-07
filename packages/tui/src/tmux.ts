@@ -20,22 +20,31 @@ const CLIENT_TERMTYPE_NAME = /^([A-Za-z][A-Za-z0-9._+-]*)(?=\s|\(|$)/u;
 const CLIENT_TERMTYPE_TIMEOUT_MS = 500;
 let cachedClientTerminalName: string | null | undefined;
 
+/** Attempts per probe: a cold spawn under load can overrun the budget and be
+ *  SIGKILLed, and this result is cached for the life of the process — one
+ *  retry turns that race into a real answer instead of a permanent fallback
+ *  to the generic terminal id. A genuinely absent server fails both. */
+const CLIENT_TERMTYPE_ATTEMPTS = 2;
+
 function queryTmuxClientTerminalName(env: NodeJS.ProcessEnv): string | null {
 	const tmux = $which("tmux", { PATH: env.PATH });
 	if (!tmux) return null;
-	try {
-		const result = Bun.spawnSync([tmux, "display-message", "-p", "#{client_termtype}"], {
-			env,
-			stdout: "pipe",
-			stderr: "ignore",
-			timeout: CLIENT_TERMTYPE_TIMEOUT_MS,
-			killSignal: "SIGKILL",
-		});
-		if (result.exitCode !== 0) return null;
-		return CLIENT_TERMTYPE_NAME.exec(result.stdout.toString().trim())?.[1] ?? null;
-	} catch {
-		return null;
+	for (let attempt = 0; attempt < CLIENT_TERMTYPE_ATTEMPTS; attempt++) {
+		try {
+			const result = Bun.spawnSync([tmux, "display-message", "-p", "#{client_termtype}"], {
+				env,
+				stdout: "pipe",
+				stderr: "ignore",
+				timeout: CLIENT_TERMTYPE_TIMEOUT_MS,
+				killSignal: "SIGKILL",
+			});
+			if (result.exitCode !== 0) continue;
+			return CLIENT_TERMTYPE_NAME.exec(result.stdout.toString().trim())?.[1] ?? null;
+		} catch {
+			// Spawn failure (ENOENT race, no /bin/sh): try once more, then give up.
+		}
 	}
+	return null;
 }
 
 /**
