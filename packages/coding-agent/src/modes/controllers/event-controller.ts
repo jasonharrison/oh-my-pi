@@ -1675,6 +1675,20 @@ export class EventController {
 	}
 
 	async #handleMessageEnd(event: Extract<AgentSessionEvent, { type: "message_end" }>): Promise<void> {
+		// A focus replay can replace a settled card before its result finishes persisting.
+		const message = event.message;
+		if (message.role === "toolResult" && !this.#backgroundCallIds.has(message.toolCallId)) {
+			const component = this.ctx.pendingTools.get(message.toolCallId);
+			if (component) {
+				this.#settleHeldCompletion(component, {
+					type: "tool_execution_end",
+					toolCallId: message.toolCallId,
+					toolName: message.toolName,
+					result: { content: message.content, details: message.details },
+					isError: message.isError,
+				});
+			}
+		}
 		// The persistence slot exists before message_end notification, unlike
 		// tool_execution_end. Resolve HUD identity only after canonical append.
 		if (event.message.role === "toolResult" && event.message.toolName === "todo" && !event.message.isError) {

@@ -348,6 +348,29 @@ describe("#9816 focus blackout across an in-flight wait", () => {
 		expect(rendered).toContain("Sleeper1 done");
 		expect(ctx.pendingTools.has("wait-1")).toBe(false);
 	});
+
+	it("settles a replayed card when its result persists after focus replay", async () => {
+		const { ctx, focus, main } = createFixture();
+		await ctx.renderInitialMessages();
+		await focus.focusAgent("Worker");
+		const replay = ctx.renderInitialMessages;
+		ctx.renderInitialMessages = async options => {
+			await main.emit({ type: "tool_execution_start", toolCallId: "wait-1", toolName: "wait", args: {} });
+			await main.emit({
+				type: "tool_execution_end",
+				toolCallId: "wait-1",
+				toolName: "wait",
+				result: { content: completedWait.content, details: completedWait.details },
+				isError: false,
+			});
+			await replay(options);
+		};
+		await focus.unfocus();
+		main.stagePersistedCompletion()();
+		await main.emit({ type: "message_end", message: completedWait });
+		expect(ctx.pendingTools.has("wait-1")).toBe(false);
+		expect(Bun.stripANSI(ctx.chatContainer.render(120).join("\n"))).toContain("Sleeper1 done");
+	});
 });
 
 describe("#10446 task progress across a focus rebuild", () => {
@@ -393,6 +416,7 @@ describe("#10447 persisted background task board across a focus rebuild", () => 
 
 		// A live frame emitted after return still routes to the preserved card.
 		await main.emitToolUpdate(backgroundProgressUpdate("post-return-marker"));
+		await main.emit({ type: "message_end", message: backgroundTaskRunningResult });
 		const live = Bun.stripANSI(fixture.ctx.chatContainer.render(120).join("\n"));
 		expect(live).toContain("post-return-marker");
 	});
