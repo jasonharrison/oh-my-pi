@@ -13,6 +13,9 @@
 - Fixed `out://` replies sent from an eval cell (`tool.write` to `out://`, or `tool.bash` with `> out://`) never appearing even though the write reported "Shown to the user."; they now draw as replies after the eval card, and are refused where nothing would show them (a backgrounded cell, a browser tab script)
 - Fixed a `write` to `out://` (such as `out://baselines.md`) drawing as a Write card with line numbers instead of a reply streaming as prose
 - Fixed table charts drawing a `ratio` or `speedup` column as a series beside the timings it was computed from, which read as "719× less" against the baseline
+### Fixed
+
+- DuckDuckGo excludes advertising click redirects before applying result limits, keeping them out of direct and Public Web sources.
 
 ## [18.14.1] - 2026-10-31
 
