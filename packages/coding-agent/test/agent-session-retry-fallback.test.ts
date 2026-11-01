@@ -3504,14 +3504,14 @@ describe("AgentSession retry fallback", () => {
 	it.each([
 		{
 			fallbackOn: "usage-limit",
-			error: "503 Service Unavailable",
+			error: "503 Service Unavailable retry-after-ms=5",
 			failures: 1,
 			requests: ["primary", "primary"],
 			stop: "stop",
 		},
 		{
 			fallbackOn: "usage-limit",
-			error: "503 Service Unavailable",
+			error: "503 Service Unavailable retry-after-ms=5",
 			failures: 9,
 			requests: ["primary", "primary", "primary"],
 			stop: "error",
@@ -3539,7 +3539,7 @@ describe("AgentSession retry fallback", () => {
 		},
 		{
 			fallbackOn: "except-usage-limit",
-			error: "503 Service Unavailable",
+			error: "503 Service Unavailable retry-after-ms=5",
 			failures: 9,
 			requests: ["primary", "fallback"],
 			stop: "stop",
@@ -3711,7 +3711,7 @@ describe("AgentSession retry fallback", () => {
 						],
 					});
 				} else if (requestCount === 2) {
-					mock.push({ throw: "503 overloaded_error: provider returned error" });
+					mock.push({ throw: "503 overloaded_error: provider returned error retry-after-ms=5" });
 				} else {
 					mock.push({ content: ["Recovered on Sonnet"] });
 				}
@@ -3796,7 +3796,7 @@ describe("AgentSession retry fallback", () => {
 						],
 					});
 				} else if (requestCount === 2) {
-					mock.push({ throw: "503 overloaded_error: provider returned error" });
+					mock.push({ throw: "503 overloaded_error: provider returned error retry-after-ms=5" });
 				} else {
 					mock.push({ content: ["Recovered on Opus"] });
 				}
@@ -3879,7 +3879,7 @@ describe("AgentSession retry fallback", () => {
 						],
 					});
 				} else if (model.id === primaryModel.id) {
-					mock.push({ throw: "503 overloaded_error: provider returned error" });
+					mock.push({ throw: "503 overloaded_error: provider returned error retry-after-ms=5" });
 				} else {
 					mock.push({ content: ["Recovered on Opus"] });
 				}
@@ -4378,7 +4378,7 @@ describe("AgentSession retry fallback", () => {
 				initialState: { model: primaryModel, systemPrompt: ["Test"], tools: [], messages: [] },
 				streamFn: (model, context, options) => {
 					requestedModels.push(`${model.provider}/${model.id}`);
-					mock.push({ throw: "overloaded_error: provider returned error 503" });
+					mock.push({ throw: "overloaded_error: provider returned error 503 retry-after-ms=5" });
 					return mock.stream(model, context, options);
 				},
 			});
@@ -5556,7 +5556,7 @@ describe("AgentSession retry fallback", () => {
 				requestedModels.push(`${model.provider}/${model.id}`);
 				calls += 1;
 				if (calls === 1) {
-					mock.push({ throw: "overloaded_error: provider returned error 503" });
+					mock.push({ throw: "overloaded_error: provider returned error 503 retry-after-ms=5" });
 				} else if (calls === 2) {
 					mock.push({
 						stopReason: "error",
@@ -6853,7 +6853,7 @@ describe("AgentSession retry fallback", () => {
 		if (!primaryModel || !fallbackModel) throw new Error("Expected bundled test models to exist");
 		const requestedModels: string[] = [];
 		const agent = createFallbackAgent(primaryModel, requestedModels, {
-			firstError: "overloaded_error: provider returned error 503",
+			firstError: "overloaded_error: provider returned error 503 retry-after-ms=5",
 		});
 		const settings = Settings.isolated({
 			"compaction.enabled": false,
@@ -8397,7 +8397,7 @@ describe("AgentSession retry fallback", () => {
 		// message, such as an extension's wake-up, is queued as a steer that
 		// never drains. A successful retry's prompt() is released elsewhere, but
 		// its subscribers never see the auto_retry_end that ends the saga.
-		const transientError = "overloaded_error: provider returned error 503";
+		const transientError = "overloaded_error: provider returned error 503 retry-after-ms=5";
 		const delivery = "DELIVERY-1 from an extension";
 
 		type FailingWrite =

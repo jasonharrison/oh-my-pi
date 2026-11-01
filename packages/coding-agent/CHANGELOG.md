@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed overload retries exhausting their budget before the provider's capacity backoff elapsed.
+
 ## [18.14.2] - 2026-10-31
 
 ### Added

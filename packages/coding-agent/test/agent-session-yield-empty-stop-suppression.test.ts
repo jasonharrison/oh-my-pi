@@ -160,7 +160,10 @@ describe("AgentSession yield empty-stop suppression", () => {
 	it("settles a successful retry that ends in a terminal yield", async () => {
 		mockSchedulerWaitWithClock();
 		const { session, mock } = await createHarness(
-			[{ throw: "503 service unavailable: overloaded_error" }, yieldCall("recovered", "call-yield-after-retry")],
+			[
+				{ throw: "503 service unavailable: overloaded_error retry-after-ms=5" },
+				yieldCall("recovered", "call-yield-after-retry"),
+			],
 			{ retryEnabled: true },
 		);
 		const retryEvents: Array<"auto_retry_start" | "auto_retry_end"> = [];

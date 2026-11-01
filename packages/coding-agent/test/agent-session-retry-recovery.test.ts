@@ -29,7 +29,7 @@ const RATE_LIMIT_ERROR =
 	'429 {"type":"error","error":{"type":"rate_limit_error","message":"This request would exceed your account\'s rate limit. Please try again later."}} retry-after-ms=11180000';
 const SOCKET_CLOSE_MID_STREAM =
 	"The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()";
-const RETRIABLE_SERVER_ERROR = "503 service unavailable: overloaded_error";
+const RETRIABLE_SERVER_ERROR = "503 service unavailable: overloaded_error retry-after-ms=5";
 const CODEX_STEER_REJECTION =
 	"Codex error event: The experimental native turn lane cannot accept stateful WebSocket messages while a native turn is running. Start a new independent response.create turn instead. (code=unsupported_native_inflight_message)";
 

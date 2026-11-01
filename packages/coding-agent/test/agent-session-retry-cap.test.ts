@@ -1890,29 +1890,32 @@ describe("AgentSession retry delay cap", () => {
 		});
 	});
 
-	it("honors the 45-75s model-capacity backoff for a hintless Google MODEL_CAPACITY_EXHAUSTED 429", async () => {
+	it.each([429, 503])("honors the 45-75s model-capacity backoff for a hintless Google %s", async status => {
 		const model = getBundledModel("anthropic", "claude-sonnet-4-5");
 		if (!model) {
 			throw new Error("Expected bundled Anthropic test model to exist");
 		}
 
-		const hintlessCapacityError = JSON.stringify({
-			error: {
-				code: 429,
-				message: "Resource has been exhausted (e.g. check quota).",
-				status: "RESOURCE_EXHAUSTED",
-				details: [
-					{
-						"@type": "type.googleapis.com/google.rpc.ErrorInfo",
-						reason: "MODEL_CAPACITY_EXHAUSTED",
-						domain: "googleapis.com",
-					},
-				],
-			},
-		});
+		const capacityError =
+			status === 429
+				? `429 ${JSON.stringify({
+						error: {
+							code: 429,
+							message: "Resource has been exhausted (e.g. check quota).",
+							status: "RESOURCE_EXHAUSTED",
+							details: [
+								{
+									"@type": "type.googleapis.com/google.rpc.ErrorInfo",
+									reason: "MODEL_CAPACITY_EXHAUSTED",
+									domain: "googleapis.com",
+								},
+							],
+						},
+					})}`
+				: "Google API error (503): This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.";
 		const mock = createMockModel({
 			responses: [
-				{ throw: `429 ${hintlessCapacityError}` },
+				{ throw: capacityError },
 				{ content: ["recovered after model-capacity backoff"], stopReason: "stop" },
 			],
 		});
@@ -1947,7 +1950,7 @@ describe("AgentSession retry delay cap", () => {
 			if (event.type === "auto_retry_start") retryStartEvents.push(event);
 		});
 
-		await session.prompt("Trigger hintless model capacity 429");
+		await session.prompt(`Trigger hintless model capacity ${status}`);
 		await session.waitForIdle();
 
 		expect(retryStartEvents).toHaveLength(1);

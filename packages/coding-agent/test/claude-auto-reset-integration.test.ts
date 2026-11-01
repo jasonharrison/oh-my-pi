@@ -204,7 +204,7 @@ describe("Claude saved-reset trigger integration", () => {
 			streamFn: (requestedModel, context, streamOptions) => {
 				calls++;
 				const transientFailures = options.transientFailures ?? 0;
-				if (calls <= transientFailures) mock.push({ throw: "503 Service unavailable" });
+				if (calls <= transientFailures) mock.push({ throw: "503 Service unavailable retry-after-ms=5" });
 				else if (options.streamErrorFirst && (calls === transientFailures + 1 || !quota.restored)) {
 					mock.push({ throw: CLAUDE_USAGE_LIMIT_ERROR });
 				} else mock.push({ content: ["recovered after Claude reset"], stopReason: "stop" });
